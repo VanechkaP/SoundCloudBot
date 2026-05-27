@@ -8,6 +8,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from PIL import Image
 from dotenv import load_dotenv
+from aiohttp import web
 
 # Импортируем наши новые модули для работы с БД и кнопками
 import database as db
@@ -276,12 +277,29 @@ async def save_track_to_db(callback: CallbackQuery):
     await callback.answer()
 
 
-# --- ЗАПУСК БОТА ---
+# --- ВЕБ-СЕРВЕР ДЛЯ ХОСТИНГА (RENDER PING) ---
+async def handle_ping(request):
+    return web.Response(text="Bot is running!")
+
+
+# --- ЗАПУСК БОТА И ВЕБ-СЕРВЕРА ---
 async def main():
     print("🚀 Бот успешно запущен и готов к работе с плейлистами!")
+
+    # 1. Запуск веб-сервера на порту 10000 для Render
+    app = web.Application()
+    app.router.add_get("/", handle_ping)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", 10000)
+    asyncio.create_task(site.start())  # Запускаем фоновой задачей
+
+    # 2. Запуск long polling бота
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
 
 
 if __name__ == "__main__":
+    from aiohttp import web  # Убедись, что импорт на месте
+
     asyncio.run(main())
