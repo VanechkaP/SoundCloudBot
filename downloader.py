@@ -5,19 +5,18 @@ import yt_dlp
 
 
 async def download_soundcloud_track(url: str, progress_callback=None, output_dir: str = "downloads") -> dict:
-    """Скачивает трек из SoundCloud через yt-dlp под коротким случайным ID
-    и передает реальные проценты загрузки в progress_callback.
+    """Скачивает трек из SoundCloud в оригинальном формате (m4a/ogg) БЕЗ ПЕРЕКОДИРОВАНИЯ,
+    чтобы полностью убрать нагрузку на процессор хостинга.
     """
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    # Защита от багов FFmpeg на Windows — короткое имя без спецсимволов
     random_id = f"track_{random.randint(100000, 999999)}"
+    # Используем %(ext)s, чтобы yt-dlp сам сохранил файл в родном формате потока
     outtmpl_path = os.path.join(output_dir, f"{random_id}.%(ext)s")
 
     main_loop = asyncio.get_event_loop()
 
-    # Реальный хук прогресса yt-dlp
     def ydl_progress_hook(d):
         if d['status'] == 'downloading' and progress_callback:
             downloaded = d.get('downloaded_bytes', 0)
@@ -25,7 +24,6 @@ async def download_soundcloud_track(url: str, progress_callback=None, output_dir
 
             if total:
                 percent = (downloaded / total) * 100
-                # Передаем реальный процент в поток aiogram
                 asyncio.run_coroutine_threadsafe(progress_callback(percent), main_loop)
 
     ydl_opts = {
@@ -34,7 +32,7 @@ async def download_soundcloud_track(url: str, progress_callback=None, output_dir
         'noplaylist': True,
         'quiet': True,
         'progress_hooks': [ydl_progress_hook],
-        'nocheckcertificate': True,  # Экономит время на проверке SSL
+        'nocheckcertificate': True,
         'http_headers': {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
                           '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -44,12 +42,7 @@ async def download_soundcloud_track(url: str, progress_callback=None, output_dir
         },
         'postprocessors': [
             {
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3',
-                'preferredquality': 'auto',  # КРИТИЧНО ДЛЯ ХОСТИНГА: не перекодируем, а берем оригинал
-            },
-            {
-                'key': 'FFmpegMetadata',  # Оставляем для красивых названий
+                'key': 'FFmpegMetadata',  # Только прописываем теги, звук не трогаем
             }
         ],
     }
@@ -57,7 +50,11 @@ async def download_soundcloud_track(url: str, progress_callback=None, output_dir
     def extract():
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
-            filepath = os.path.join(output_dir, f"{random_id}.mp3")
+
+            # Динамически забираем расширение, в котором сохранился файл
+            ext = info.get('ext', 'm4a')
+            filepath = os.path.join(output_dir, f"{random_id}.{ext}")
+
             thumbnail_url = info.get('thumbnail') or info.get('thumbnails', [{}])[0].get('url')
 
             return {
