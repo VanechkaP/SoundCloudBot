@@ -34,6 +34,7 @@ async def download_soundcloud_track(url: str, progress_callback=None, output_dir
         'noplaylist': True,
         'quiet': True,
         'progress_hooks': [ydl_progress_hook],
+        'nocheckcertificate': True,  # Экономит время на проверке SSL
         'http_headers': {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
                           '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -45,10 +46,10 @@ async def download_soundcloud_track(url: str, progress_callback=None, output_dir
             {
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'mp3',
-                'preferredquality': '128',
+                'preferredquality': 'auto',  # КРИТИЧНО ДЛЯ ХОСТИНГА: не перекодируем, а берем оригинал
             },
             {
-                'key': 'FFmpegMetadata',
+                'key': 'FFmpegMetadata',  # Оставляем для красивых названий
             }
         ],
     }
