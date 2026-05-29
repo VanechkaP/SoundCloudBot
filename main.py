@@ -29,7 +29,7 @@ user_cooldowns = {}
 # Словарь для отслеживания ID последнего сообщения меню у каждого юзера
 user_menus = {}
 
-# Глобальный Lock и счетчик для организации строгой очереди
+# Очередь загрузок: замок и счётчик активных задач
 download_lock = asyncio.Lock()
 active_downloads = 0
 
@@ -109,7 +109,7 @@ async def update_progress_bar(message: types.Message, percent: float, last_updat
 async def start_cmd(message: types.Message):
     text_content = (
         f"👋 Привет, {message.from_user.first_name}!\n\n"
-        "☁️ Cloudly Bot 2.1\n\n"
+        "☁️ Cloudly Bot 2.5\n\n"
         "Отправь мне ссылку из SoundCloud в чат"
     )
     menu_msg = await message.answer(text=text_content, reply_markup=get_main_menu())
@@ -120,7 +120,7 @@ async def start_cmd(message: types.Message):
 async def press_info(callback: types.CallbackQuery):
     info_text = (
         "ℹ️ Информация о боте\n\n"
-        "• Бот умеет скачивать аудио из SoundCloud.\n\n"
+        "• Бот умеет скачивать аудио из SoundCloud в формате MP3.\n\n"
         "• Лимит на размер одного файла: 50 МБ (ограничение Telegram).\n\n"
         "• Принимаются только ссылки на синглы (не плейлисты)!"
     )
@@ -145,7 +145,7 @@ async def press_cancel(callback: types.CallbackQuery):
     await callback.answer()
     user_menus[callback.from_user.id] = callback.message.message_id
     await callback.message.edit_text(
-        "☁️ Cloudly Bot 2.1\n\n"
+        "☁️ Cloudly Bot 2.5\n\n"
         "Отправь мне ссылку из SoundCloud в чат",
         reply_markup=get_main_menu()
     )
@@ -162,24 +162,30 @@ async def handle_link(message: types.Message):
     current_time = time.time()
 
     if len(message.text) > 300:
-        try: await message.delete()
-        except Exception: pass
+        try:
+            await message.delete()
+        except Exception:
+            pass
         await message.answer("❌ Ошибка: Сообщение слишком длинное!", reply_markup=get_cancel_menu())
         return
 
     if user_id in user_cooldowns:
         if current_time - user_cooldowns[user_id] < 1.5:
-            try: await message.delete()
-            except Exception: pass
+            try:
+                await message.delete()
+            except Exception:
+                pass
             return
 
     user_cooldowns[user_id] = current_time
     url = message.text.strip()
 
-    try: await message.delete()
-    except Exception: pass
+    try:
+        await message.delete()
+    except Exception:
+        pass
 
-    # Фиксируем новую активную задачу в очереди
+    # Увеличиваем счетчик активных задач
     active_downloads += 1
 
     old_menu_id = user_menus.get(user_id)
@@ -190,7 +196,6 @@ async def handle_link(message: types.Message):
         except Exception:
             pass
 
-    # Выставляем префикс "В очереди", если бот прямо сейчас занят обработкой другого трека
     status_prefix = "⏳ В очереди... \n" if download_lock.locked() else ""
     status_msg = await message.answer(f"{status_prefix}⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜ 0%")
 
@@ -202,18 +207,20 @@ async def handle_link(message: types.Message):
     async def progress_hook(percent):
         await update_progress_bar(status_msg, percent, last_update, status_prefix="")
 
-    # Входим в асинхронный замок строгой очереди
-    async with download_lock:
-        try:
-            # Сбрасываем статус ожидания, так как до этого трека дошла очередь
-            try: await status_msg.edit_text("⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜ 0%")
-            except Exception: pass
+    try:
+        async with download_lock:
+            try:
+                await status_msg.edit_text("⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜ 0%")
+            except Exception:
+                pass
 
             track_data = await download_soundcloud_track(url, progress_callback=progress_hook)
             file_path = track_data['file_path']
 
-            try: await status_msg.edit_text("⚙️ Обрабатываю аудиозапись...")
-            except Exception: pass
+            try:
+                await status_msg.edit_text("⚙️ Обрабатываю аудио-файл...")
+            except Exception:
+                pass
 
             thumbnail_url = track_data.get('thumbnail_url')
             if thumbnail_url:
@@ -231,86 +238,94 @@ async def handle_link(message: types.Message):
 
             tg_thumb = FSInputFile(thumb_path) if thumb_path and os.path.exists(thumb_path) else None
 
-            try: await status_msg.edit_text("🚀 Секунду, отправляю трек в Telegram...")
-            except Exception: pass
+            try:
+                await status_msg.edit_text("📥 Отправляю аудио-файл")
+            except Exception:
+                pass
 
-            if file_path.startswith("http://") or file_path.startswith("https://"):
+            if os.path.exists(file_path):
+                file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
+                if file_size_mb > 49.5:
+                    raise ValueError(f"Файл слишком большой: {file_size_mb:.1f} MB")
+
                 await message.answer_audio(
-                    audio=file_path,
+                    audio=FSInputFile(file_path),
                     title=track_data['title'],
                     performer=track_data['artist'],
                     duration=track_data['duration'],
                     thumbnail=tg_thumb
                 )
             else:
-                if os.path.exists(file_path):
-                    file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
-                    if file_size_mb > 49.5:
-                        raise ValueError(f"Файл слишком большой: {file_size_mb:.1f} MB")
+                raise FileNotFoundError("Файл трека не найден на диске!")
 
-                    await message.answer_audio(
-                        audio=FSInputFile(file_path),
-                        title=track_data['title'],
-                        performer=track_data['artist'],
-                        duration=track_data['duration'],
-                        thumbnail=tg_thumb
-                    )
-                else:
-                    raise FileNotFoundError("Файл трека не найден на диске!")
             success = True
 
-        except ValueError as val_err:
-            print(f"Превышен лимит размера: {val_err}")
-            error_size_text = "📁 Ошибка: Файл весит более 50 МБ.\nTelegram не позволяет отправлять такие тяжёлые треки."
-            try: await status_msg.edit_text(text=error_size_text, reply_markup=get_cancel_menu())
+    except ValueError as val_err:
+        print(f"Превышен лимит размера: {val_err}")
+        error_size_text = "📁 Ошибка: Файл весит более 50 МБ.\nTelegram не позволяет отправлять такие тяжёлые треки."
+        try:
+            await status_msg.edit_text(text=error_size_text, reply_markup=get_cancel_menu())
+            user_menus[user_id] = status_msg.message_id
+        except Exception:
+            err_msg = await message.answer(text=error_size_text, reply_markup=get_cancel_menu())
+            user_menus[user_id] = err_msg.message_id
+
+    except Exception as e:
+        print(f"Ошибка при обработке ссылки: {e}")
+        error_download_text = "🙈 Не удалось скачать этот аудио-файл. Возможно, он скрыт или удален."
+        try:
+            await status_msg.edit_text(text=error_download_text, reply_markup=get_cancel_menu())
+            user_menus[user_id] = status_msg.message_id
+        except Exception:
+            err_msg = await message.answer(text=error_download_text, reply_markup=get_cancel_menu())
+            user_menus[user_id] = err_msg.message_id
+
+    finally:
+        # Гарантированно уменьшаем счетчик активных задач, даже если упали в ошибку
+        active_downloads = max(0, active_downloads - 1)
+
+        if track_data and 'file_path' in track_data:
+            if os.path.exists(track_data['file_path']):
+                try:
+                    os.remove(track_data['file_path'])
+                except Exception:
+                    pass
+        if thumb_path and os.path.exists(thumb_path):
+            try:
+                os.remove(thumb_path)
             except Exception:
-                waiting_msg = await message.answer(text=error_size_text, reply_markup=get_cancel_menu())
-                user_menus[user_id] = waiting_msg.message_id
+                pass
 
-        except Exception as e:
-            print(f"Ошибка при обработке ссылки: {e}")
-            error_download_text = "🙈 Не удалось скачать этот трек. Возможно, он скрыт или удален."
-            try: await status_msg.edit_text(text=error_download_text, reply_markup=get_cancel_menu())
+        if success and status_msg:
+            try:
+                await status_msg.delete()
             except Exception:
-                waiting_msg = await message.answer(text=error_download_text, reply_markup=get_cancel_menu())
-                user_menus[user_id] = waiting_msg.message_id
+                pass
 
-        finally:
-            # Задача выполнена, уменьшаем общий счетчик очереди
-            active_downloads -= 1
+        # Меню вызывается только если это БЫЛА ПОСЛЕДНЯЯ задача и ВСЕ загрузки прошли УСПЕШНО
+        if active_downloads == 0 and success:
+            old_menu_id = user_menus.get(user_id)
+            if old_menu_id:
+                try:
+                    await bot.delete_message(chat_id=message.chat.id, message_id=old_menu_id)
+                except Exception:
+                    pass
 
-            if track_data and 'file_path' in track_data:
-                if os.path.exists(track_data['file_path']):
-                    try: os.remove(track_data['file_path'])
-                    except Exception: pass
-            if thumb_path and os.path.exists(thumb_path):
-                try: os.remove(thumb_path)
-                except Exception: pass
-
-            if success and status_msg:
-                try: await status_msg.delete()
-                except Exception: pass
-
-            # Меню возвращаем строго тогда, когда ВСЕ добавленные в очередь ссылки закончились
-            if active_downloads == 0:
-                old_menu_id = user_menus.get(user_id)
-                if old_menu_id:
-                    try: await bot.delete_message(chat_id=message.chat.id, message_id=old_menu_id)
-                    except Exception: pass
-
-                final_menu = await message.answer(
-                    text="☁️ Cloudly Bot 2.1\n\nОтправь мне ссылку из SoundCloud в чат",
-                    reply_markup=get_main_menu()
-                )
-                user_menus[user_id] = final_menu.message_id
+            final_menu = await message.answer(
+                text="☁️ Cloudly Bot 2.5\n\nОтправь мне ссылку из SoundCloud в чат",
+                reply_markup=get_main_menu()
+            )
+            user_menus[user_id] = final_menu.message_id
 
 
 @dp.message()
 async def echo_all(message: types.Message):
     old_menu_id = user_menus.get(message.from_user.id)
     if old_menu_id:
-        try: await bot.delete_message(chat_id=message.chat.id, message_id=old_menu_id)
-        except Exception: pass
+        try:
+            await bot.delete_message(chat_id=message.chat.id, message_id=old_menu_id)
+        except Exception:
+            pass
 
     new_menu = await message.answer(
         "🤖 Чтобы я начал работу, отправь мне ссылку из SoundCloud.",
@@ -328,7 +343,7 @@ async def handle_ping(request):
 
 
 async def main():
-    print("Bot successfully started in extreme optimization mode!")
+    print("Bot successfully started in direct download mode!")
 
     app = web.Application()
     app.router.add_get("/", handle_ping)

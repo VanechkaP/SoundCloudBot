@@ -5,14 +5,13 @@ import yt_dlp
 
 
 async def download_soundcloud_track(url: str, progress_callback=None, output_dir: str = "downloads") -> dict:
-    """Скачивает трек из SoundCloud в оригинальном формате (m4a/ogg) БЕЗ ПЕРЕКОДИРОВАНИЯ,
-    чтобы полностью убрать нагрузку на процессор хостинга.
+    """Скачивает трек из SoundCloud через yt-dlp и собирает в MP3
+    без принудительного изменения битрейта, разгружая процессор хостинга.
     """
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
     random_id = f"track_{random.randint(100000, 999999)}"
-    # Используем %(ext)s, чтобы yt-dlp сам сохранил файл в родном формате потока
     outtmpl_path = os.path.join(output_dir, f"{random_id}.%(ext)s")
 
     main_loop = asyncio.get_event_loop()
@@ -42,7 +41,12 @@ async def download_soundcloud_track(url: str, progress_callback=None, output_dir
         },
         'postprocessors': [
             {
-                'key': 'FFmpegMetadata',  # Только прописываем теги, звук не трогаем
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',
+                'preferredquality': 'auto',  # Быстрая сборка в mp3 без перекодирования звука
+            },
+            {
+                'key': 'FFmpegMetadata',
             }
         ],
     }
@@ -50,11 +54,7 @@ async def download_soundcloud_track(url: str, progress_callback=None, output_dir
     def extract():
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
-
-            # Динамически забираем расширение, в котором сохранился файл
-            ext = info.get('ext', 'm4a')
-            filepath = os.path.join(output_dir, f"{random_id}.{ext}")
-
+            filepath = os.path.join(output_dir, f"{random_id}.mp3")
             thumbnail_url = info.get('thumbnail') or info.get('thumbnails', [{}])[0].get('url')
 
             return {
