@@ -1,5 +1,7 @@
-yt-dlp~=2026.3.17
-httpx~=0.28.1
-aiogram~=3.28.2
-pillow~=12.2.0
-python-dotenv~=1.2.2
+yt-dlp
+httpx
+aiogram
+pillow
+python-dotenv
+ffmpeg
+ffprobe
