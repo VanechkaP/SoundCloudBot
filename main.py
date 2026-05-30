@@ -195,7 +195,7 @@ async def press_info(callback: types.CallbackQuery):
     )
     user_menus[callback.from_user.id] = callback.message.message_id
     try:
-        await callback.message.edit_text(text=info_text, reply_markup=get_cancel_menu())
+        await callback.message.edit_text(text=info_text, reply_markup=get_cancel_menu(), parse_mode="Markdown")
     except Exception:
         pass
     await callback.answer()
@@ -209,7 +209,7 @@ async def press_donate(callback: types.CallbackQuery):
     )
     user_menus[callback.from_user.id] = callback.message.message_id
     try:
-        await callback.message.edit_text(text=donate_text, reply_markup=support_keyboard)
+        await callback.message.edit_text(text=donate_text, reply_markup=support_keyboard, parse_mode="Markdown")
     except Exception:
         pass
     await callback.answer()
