@@ -7,7 +7,6 @@ from aiogram.filters import Command
 from aiogram.types import FSInputFile, InlineKeyboardMarkup, InlineKeyboardButton
 from PIL import Image
 from dotenv import load_dotenv
-from aiohttp import web
 
 from downloader import download_soundcloud_track, extract_link_info
 
@@ -776,20 +775,8 @@ async def echo_all(message: types.Message):
 # 7. СЕРВЕРНАЯ ИНФРАСТРУКТУРА И ЗАПУСК
 # =====================================================================
 
-async def handle_ping(request):
-    return web.Response(text="Bot is running!")
-
-
 async def main():
-    print("Bot started")
-
-    app = web.Application()
-    app.router.add_get("/", handle_ping)
-    runner = web.AppRunner(app)
-    await runner.setup()
-    site = web.TCPSite(runner, "0.0.0.0", 10000)
-    asyncio.create_task(site.start())
-
+    print("Bot is running.")
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
 
