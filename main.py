@@ -311,7 +311,7 @@ async def handle_link(message: types.Message):
                     pass
 
                 status_msg = await message.answer(
-                    f"📂 Плейлист: {playlist_title}\nВсего аудио: {total_tracks}\n\n🚀 Начинаю загрузку...")
+                    f"📂 Плейлист: {playlist_title}\nВсего файлов: {total_tracks}\n\n🚀 Начинаю загрузку...")
                 await asyncio.sleep(1.0)
 
                 failed_tracks = []
@@ -440,7 +440,7 @@ async def handle_link(message: types.Message):
                         pass
 
                     report_menu = await message.answer(
-                        text=f"📊 *Загрузка завершена!*\n\n✅ Успешно отправлено: {successful_count}\n⚠️ Пропущено из-за ошибок: {len(failed_tracks)}\n\n_Вы можете попробовать скачать сломанные аудио заново._",
+                        text=f"📊 *Загрузка завершена!*\n\n✅ Успешно отправлено: {successful_count}\n⚠️ Пропущено из-за ошибок: {len(failed_tracks)}\n\n_Вы можете попробовать скачать сломанные файлы заново._",
                         reply_markup=get_retry_menu()
                     )
                     user_menus[user_id] = report_menu.message_id
@@ -583,7 +583,7 @@ async def process_retry(callback: types.CallbackQuery):
     user_id = callback.from_user.id
 
     if user_id not in failed_downloads_store:
-        await callback.answer("❌ Нет аудио для повторной загрузки или сессия устарела.", show_alert=True)
+        await callback.answer("❌ Нет файлов для повторной загрузки или сессия устарела.", show_alert=True)
         return
 
     await callback.answer("🔄 Начинаю повторную загрузку...")
@@ -622,7 +622,7 @@ async def process_retry(callback: types.CallbackQuery):
                 cached_title = entry["title"]
                 cached_artist = entry.get("artist") or playlist_artist
 
-                initial_prefix = f"🔄 Повтор [{playlist_title}]:\n📥 Подключение к аудио {index} из {total_tracks}...\n\n"
+                initial_prefix = f"🔄 Повтор [{playlist_title}]:\n📥 Подключаюсь к файлу {index} из {total_tracks}...\n\n"
 
                 try:
                     await status_msg.delete()
@@ -747,7 +747,7 @@ async def process_retry(callback: types.CallbackQuery):
                     pass
 
                 final_menu = await callback.message.answer(
-                    text="☁️ Cloudly Bot 2.5\n\nВсе аудио успешно скачаны!\n\n⚡ Отправь мне новую ссылку из SoundCloud в чат",
+                    text="☁️ Cloudly Bot 2.5\n\nВсе файлы успешно скачаны!\n\n⚡ Отправь мне новую ссылку из SoundCloud в чат",
                     reply_markup=get_main_menu()
                 )
                 user_menus[user_id] = final_menu.message_id
