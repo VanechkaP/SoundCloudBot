@@ -343,7 +343,7 @@ async def handle_link(message: types.Message):
                             actual_thumb[0] = fetched_thumb
 
                         current_title = actual_title[0] or entry.get('title') or f"Трек {index}"
-                        dynamic_prefix = f"📂 Альбом: {playlist_title} — {playlist_artist}\n📥 Скачиваю {index} из {total_tracks}:\n└ *{current_title}*\n\n"
+                        dynamic_prefix = f"📂 Альбом: {playlist_title} — {playlist_artist}\n📥 Скачиваю {index} из {total_tracks}:\n└ {current_title}\n\n"
                         await update_progress_bar(status_msg, percent, last_update, status_prefix=dynamic_prefix)
 
                     track_data = None
@@ -357,7 +357,7 @@ async def handle_link(message: types.Message):
 
                         try:
                             await status_msg.edit_text(
-                                f"⚙️ Обрабатываю: *{actual_title[0] or f'Трек {index}'}*...")
+                                f"⚙️ Обрабатываю: {actual_title[0] or f'Трек {index}'}...")
                         except Exception:
                             pass
 
@@ -409,7 +409,7 @@ async def handle_link(message: types.Message):
                         failed_tracks.append({"url": track_url, "title": failed_title, "artist": failed_artist})
 
                         # Форматируем ошибку в виде: трек - автор
-                        error_report = f"⚠️ Не удалось скачать файл {index}: *{failed_title} - {failed_artist}* (Пропущен)"
+                        error_report = f"⚠️ Не удалось скачать файл {index}: {failed_title} - {failed_artist} (Пропущен)"
                         err_msg = await message.answer(error_report, parse_mode="Markdown")
                         track_error_msg_ids.append(err_msg.message_id)
                     finally:
@@ -440,7 +440,7 @@ async def handle_link(message: types.Message):
                         pass
 
                     report_menu = await message.answer(
-                        text=f"📊 *Загрузка завершена!*\n\n✅ Успешно отправлено: {successful_count}\n⚠️ Пропущено из-за ошибок: {len(failed_tracks)}\n\n_Вы можете попробовать скачать сломанные файлы заново._",
+                        text=f"📊 Загрузка завершена!\n\n✅ Успешно отправлено: {successful_count}\n⚠️ Пропущено из-за ошибок: {len(failed_tracks)}\n\n_Вы можете попробовать скачать сломанные файлы заново._",
                         reply_markup=get_retry_menu()
                     )
                     user_menus[user_id] = report_menu.message_id
@@ -642,7 +642,7 @@ async def process_retry(callback: types.CallbackQuery):
                         actual_thumb[0] = fetched_thumb
 
                     current_title = actual_title[0] or cached_title
-                    dynamic_prefix = f"🔄 Повтор [{playlist_title}]:\n📥 Скачиваю {index} из {total_tracks}:\n└ *{current_title}*\n\n"
+                    dynamic_prefix = f"🔄 Повтор [{playlist_title}]:\n📥 Скачиваю {index} из {total_tracks}:\n└ {current_title}\n\n"
                     await update_progress_bar(status_msg, percent, last_update, status_prefix=dynamic_prefix)
 
                 track_data = None
@@ -655,7 +655,7 @@ async def process_retry(callback: types.CallbackQuery):
                         actual_title[0] = track_data['title']
 
                     try:
-                        await status_msg.edit_text(f"⚙️ Обрабатываю: *{actual_title[0]}*...")
+                        await status_msg.edit_text(f"⚙️ Обрабатываю: {actual_title[0]}...")
                     except Exception:
                         pass
 
@@ -705,7 +705,7 @@ async def process_retry(callback: types.CallbackQuery):
 
                     # Форматируем ошибку повтора в виде: трек - автор
                     err_msg = await callback.message.answer(
-                        f"⚠️ Повторная попытка не удалась: *{failed_title} - {failed_artist}*",
+                        f"⚠️ Повторная попытка не удалась: {failed_title} - {failed_artist}",
                         parse_mode="Markdown"
                     )
                     track_error_msg_ids.append(err_msg.message_id)
@@ -736,7 +736,7 @@ async def process_retry(callback: types.CallbackQuery):
                     pass
 
                 report_menu = await callback.message.answer(
-                    text=f"📊 *Повторная загрузка завершена!*\n\n✅ Успешно скачано: {successful_count}\n⚠️ Всё ещё с ошибками: {len(failed_tracks)}",
+                    text=f"📊 Повторная загрузка завершена!\n\n✅ Успешно скачано: {successful_count}\n⚠️ Всё ещё с ошибками: {len(failed_tracks)}",
                     reply_markup=get_retry_menu()
                 )
                 user_menus[user_id] = report_menu.message_id
