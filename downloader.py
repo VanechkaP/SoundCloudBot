@@ -88,9 +88,6 @@ async def download_soundcloud_track(url: str, progress_callback=None, output_dir
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'mp3',
                 'preferredquality': 'auto',
-            },
-            {
-                'key': 'FFmpegMetadata',
             }
         ],
     }
