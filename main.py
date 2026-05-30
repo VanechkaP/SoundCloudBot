@@ -43,7 +43,7 @@ def get_main_menu():
             InlineKeyboardButton(text="📝 Список изменений", callback_data="menu_changelog")
         ],
         [
-            InlineKeyboardButton(text="ℹ️ FAQ", callback_data="menu_info"),
+            InlineKeyboardButton(text="ℹ️ О боте", callback_data="menu_info"),
             InlineKeyboardButton(text="💬 Связь", callback_data="menu_donate")
         ]
     ]
@@ -138,21 +138,27 @@ async def start_cmd(message: types.Message):
 @dp.callback_query(F.data == "menu_changelog")
 async def press_changelog(callback: types.CallbackQuery):
     changelog_text = (
-        "🚀 *Список изменений* 🚀\n\n"
-        "*2.5.3:*\n"
-        "- Добавлена поддержка ссылок на альбомы и плейлисты.\n"
-        "- Обновлён дизайн загрузки аудио.\n\n"
-        "*2.5.2:*\n"
-        "- Изменения в стабильности сервера.\n\n"
-        "*2.5.1:*\n"
-        "- Экстренный фикс отправки и сжатия аудио.\n\n"
+        "⚠️ *Список изменений* ⚠️\n\n"
         "*2.5:*\n"
+        "- Добавлена поддержка ссылок на альбомы и плейлисты.\n"
+        "- Обновлён дизайн загрузки аудио.\n"
+        "- Переход на новый хостинг\n\n"
+        "*2.2.1:*\n"
+        "- Изменения в стабильности сервера.\n\n"
+        "*2.2:*\n"
         "- Глобальный редизайн меню.\n"
+        "- Экстренный фикс отправки и сжатия аудио.\n\n"
+        "*2.1:*\n"
         "- Новая логика отправки аудио.\n"
         "- Повышена стабильность отправки аудио.\n\n"
         "*2.0:*\n"
         "- Добавлена полоса загрузки аудио.\n"
-        "- Исправление известных багов."
+        "- Исправление известных багов.\n\n"
+        "*1.5:*\n"
+        "- Добавлено главное меню.\n"
+        "- Исправление ошибок.\n\n"
+        "*1.0:*\n"
+        "- Бот создан и протестирован"
     )
 
     user_id = callback.from_user.id
@@ -182,7 +188,7 @@ async def press_changelog(callback: types.CallbackQuery):
 @dp.callback_query(F.data == "menu_info")
 async def press_info(callback: types.CallbackQuery):
     info_text = (
-        "ℹ️ Информация ℹ️\n\n"
+        "ℹ️ *Информация* ℹ️\n\n"
         "• Бот умеет скачивать треки и плейлисты из SoundCloud в формате MP3.\n\n"
         "• Лимит на размер одного файла: 50 МБ (ограничение Telegram).\n\n"
         "• Скачивание альбомов происходит поштучно в порядке очереди!"
@@ -198,8 +204,8 @@ async def press_info(callback: types.CallbackQuery):
 @dp.callback_query(F.data == "menu_donate")
 async def press_donate(callback: types.CallbackQuery):
     donate_text = (
-        "✨ Поддержка проекта ✨\n\n"
-        "Если тебе нравится бот и ты хочешь помочь с оплатой хостинга или предложить идею - нажми на кнопку ниже и напиши создателю проекта напрямую!"
+        "✨ *Поддержка проекта* ✨\n\n"
+        "Если тебе нравится бот и ты хочешь помочь с оплатой хостинга, сообщить об ошибке или предложить идею - нажми на кнопку ниже и напиши создателю проекта напрямую!"
     )
     user_menus[callback.from_user.id] = callback.message.message_id
     try:
@@ -297,7 +303,7 @@ async def handle_link(message: types.Message):
                 total_tracks = link_info['total_tracks']
 
                 if total_tracks > 35:
-                    raise ValueError(f"Плейлист слишком большой ({total_tracks} треков). Лимит бота — 35.")
+                    raise ValueError(f"Плейлист слишком большой ({total_tracks} аудио). Лимит бота — 35.")
 
                 try:
                     await status_msg.delete()
@@ -305,7 +311,7 @@ async def handle_link(message: types.Message):
                     pass
 
                 status_msg = await message.answer(
-                    f"📂 Плейлист: {playlist_title}\nВсего треков: {total_tracks}\n\n🚀 Начинаю загрузку...")
+                    f"📂 Плейлист: {playlist_title}\nВсего аудио: {total_tracks}\n\n🚀 Начинаю загрузку...")
                 await asyncio.sleep(1.0)
 
                 failed_tracks = []
@@ -351,7 +357,7 @@ async def handle_link(message: types.Message):
 
                         try:
                             await status_msg.edit_text(
-                                f"⚙️ Обработка и отправка: *{actual_title[0] or f'Трек {index}'}*...")
+                                f"⚙️ Обрабатываю: *{actual_title[0] or f'Трек {index}'}*...")
                         except Exception:
                             pass
 
@@ -403,7 +409,7 @@ async def handle_link(message: types.Message):
                         failed_tracks.append({"url": track_url, "title": failed_title, "artist": failed_artist})
 
                         # Форматируем ошибку в виде: трек - автор
-                        error_report = f"⚠️ Не удалось скачать трек {index}: *{failed_title} - {failed_artist}* (Пропущен)"
+                        error_report = f"⚠️ Не удалось скачать файл {index}: *{failed_title} - {failed_artist}* (Пропущен)"
                         err_msg = await message.answer(error_report, parse_mode="Markdown")
                         track_error_msg_ids.append(err_msg.message_id)
                     finally:
@@ -434,7 +440,7 @@ async def handle_link(message: types.Message):
                         pass
 
                     report_menu = await message.answer(
-                        text=f"📊 *Загрузка завершена!*\n\n✅ Успешно отправлено: {successful_count}\n⚠️ Пропущено из-за ошибок: {len(failed_tracks)}\n\n_Вы можете попробовать перекачать только неудавшиеся треки заново._",
+                        text=f"📊 *Загрузка завершена!*\n\n✅ Успешно отправлено: {successful_count}\n⚠️ Пропущено из-за ошибок: {len(failed_tracks)}\n\n_Вы можете попробовать скачать сломанные аудио заново._",
                         reply_markup=get_retry_menu()
                     )
                     user_menus[user_id] = report_menu.message_id
@@ -525,7 +531,7 @@ async def handle_link(message: types.Message):
 
     except Exception as e:
         print(f"Критическая ошибка работы ссылки: {e}")
-        error_download_text = "🙈 Не удалось обработать эту ссылку. Возможно, профиль скрыт, плейлист пуст или превышены лимиты Telegram."
+        error_download_text = "🙈 Не удалось обработать ссылку. Возможно, профиль скрыт, плейлист пуст или превышены лимиты Telegram."
 
         edited = False
         if 'status_msg' in locals() and status_msg:
@@ -561,7 +567,7 @@ async def handle_link(message: types.Message):
                     pass
 
             final_menu = await message.answer(
-                text="☁️ Cloudly Bot 2.5\n\nОтправь мне ссылку из SoundCloud в чат",
+                text="☁️ Cloudly Bot 2.5\n\n⚡ Отправь мне ссылку из SoundCloud в чат",
                 reply_markup=get_main_menu()
             )
             user_menus[user_id] = final_menu.message_id
@@ -580,7 +586,7 @@ async def process_retry(callback: types.CallbackQuery):
         await callback.answer("❌ Нет аудио для повторной загрузки или сессия устарела.", show_alert=True)
         return
 
-    await callback.answer("🔄 Начинаю повторную попытку...")
+    await callback.answer("🔄 Начинаю повторную загрузку...")
 
     data = failed_downloads_store.pop(user_id)
     playlist_title = data["playlist_title"]
@@ -616,7 +622,7 @@ async def process_retry(callback: types.CallbackQuery):
                 cached_title = entry["title"]
                 cached_artist = entry.get("artist") or playlist_artist
 
-                initial_prefix = f"🔄 Повтор [{playlist_title}]:\n📥 Подключение к треку {index} из {total_tracks}...\n\n"
+                initial_prefix = f"🔄 Повтор [{playlist_title}]:\n📥 Подключение к аудио {index} из {total_tracks}...\n\n"
 
                 try:
                     await status_msg.delete()
@@ -649,7 +655,7 @@ async def process_retry(callback: types.CallbackQuery):
                         actual_title[0] = track_data['title']
 
                     try:
-                        await status_msg.edit_text(f"⚙️ Обработка и отправка: *{actual_title[0]}*...")
+                        await status_msg.edit_text(f"⚙️ Обрабатываю: *{actual_title[0]}*...")
                     except Exception:
                         pass
 
@@ -730,7 +736,7 @@ async def process_retry(callback: types.CallbackQuery):
                     pass
 
                 report_menu = await callback.message.answer(
-                    text=f"📊 *Повторная загрузка завершена!*\n\n✅ Успешно докачано: {successful_count}\n⚠️ Всё ещё с ошибками: {len(failed_tracks)}",
+                    text=f"📊 *Повторная загрузка завершена!*\n\n✅ Успешно скачано: {successful_count}\n⚠️ Всё ещё с ошибками: {len(failed_tracks)}",
                     reply_markup=get_retry_menu()
                 )
                 user_menus[user_id] = report_menu.message_id
@@ -741,14 +747,14 @@ async def process_retry(callback: types.CallbackQuery):
                     pass
 
                 final_menu = await callback.message.answer(
-                    text="☁️ Cloudly Bot 2.5\n\nВсе аудио успешно докачаны!\nОтправь мне новую ссылку из SoundCloud в чат",
+                    text="☁️ Cloudly Bot 2.5\n\nВсе аудио успешно скачаны!\n\n⚡ Отправь мне новую ссылку из SoundCloud в чат",
                     reply_markup=get_main_menu()
                 )
                 user_menus[user_id] = final_menu.message_id
 
     except Exception as global_retry_err:
         print(f"Критический сбой повтора: {global_retry_err}")
-        err_msg = await callback.message.answer("❌ Сбой инфраструктуры при попытке повтора.",
+        err_msg = await callback.message.answer("❌ Сбой при попытке повтора.",
                                                 reply_markup=get_cancel_menu())
         user_menus[user_id] = err_msg.message_id
     finally:
