@@ -4,15 +4,11 @@ import random
 import yt_dlp
 import imageio_ffmpeg
 
-
-# Оставляем глушитель варнингов, чтобы ffprobe не спамил
+# Компактный глушитель лишних варнингов от yt-dlp
 class YtDlpQuietLogger:
     def debug(self, msg): pass
-
     def warning(self, msg): pass
-
-    def error(self, msg): print(f"[yt-dlp ERROR] {msg}")
-
+    def error(self, msg): print(msg)
 
 def extract_link_info(url: str) -> dict:
     """Быстрый запрос к SoundCloud для извлечения метаданных."""
@@ -41,7 +37,6 @@ def extract_link_info(url: str) -> dict:
                 'artist': info.get('uploader', 'Unknown Artist')
             }
 
-
 async def download_soundcloud_track(url: str, progress_callback=None, output_dir: str = "downloads") -> dict:
     """Скачивает один трек и автоматически конвертирует его в MP3."""
     if not os.path.exists(output_dir):
@@ -52,36 +47,26 @@ async def download_soundcloud_track(url: str, progress_callback=None, output_dir
     main_loop = asyncio.get_event_loop()
 
     def ydl_progress_hook(d):
-        if d['status'] == 'downloading':
-            # Добавляем вывод статуса загрузки прямо в консоль сервера
+        if d['status'] == 'downloading' and progress_callback:
             downloaded = d.get('downloaded_bytes', 0)
             total = d.get('total_bytes') or d.get('total_bytes_estimate')
-            speed = d.get('_speed_str', 'N/A')
-            percent_str = d.get('_percent_str', '0.0%')
+            info_dict = d.get('info_dict', {})
+            fetched_title = info_dict.get('title')
+            fetched_thumb = info_dict.get('thumbnail') or info_dict.get('thumbnails', [{}])[0].get('url')
 
-            # Красивый принт в логи
-            print(f"[Download] Прогресс: {percent_str.strip()} | Скорость: {speed} | Файл: {random_id}")
-
-            if progress_callback and total:
+            if total:
                 percent = (downloaded / total) * 100
-                info_dict = d.get('info_dict', {})
-                fetched_title = info_dict.get('title')
-                fetched_thumb = info_dict.get('thumbnail') or info_dict.get('thumbnails', [{}])[0].get('url')
-
                 asyncio.run_coroutine_threadsafe(
                     progress_callback(percent, fetched_title, fetched_thumb),
                     main_loop
                 )
-
-        elif d['status'] == 'finished':
-            print(f"[Download] Загрузка {random_id} завершена, запускается конвертация в MP3...")
 
     ydl_opts = {
         'format': 'bestaudio/best',
         'outtmpl': outtmpl_path,
         'noplaylist': True,
         'quiet': True,
-        'logger': YtDlpQuietLogger(),
+        'logger': YtDlpQuietLogger(),  # Идеальная чистота в логах без ffprobe-варнингов
         'progress_hooks': [ydl_progress_hook],
         'nocheckcertificate': True,
         'ffmpeg_location': imageio_ffmpeg.get_ffmpeg_exe(),
